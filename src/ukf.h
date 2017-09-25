@@ -110,6 +110,9 @@ public:
   void PredictRadarMeasurement(MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd* S_out);
   void RadarUpdateState(MatrixXd& Zsig, VectorXd& z_pred, MatrixXd& S, VectorXd& z);
   
+  void PredictLidarMeasurement(MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd* S_out);
+  void LidarUpdateState(MatrixXd& Zsig, VectorXd& z_pred, MatrixXd& S, VectorXd& z);
+  
   double WrapAngle(double angle);
 };
 
