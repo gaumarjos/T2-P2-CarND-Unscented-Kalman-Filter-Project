@@ -190,8 +190,14 @@ void UKF::Prediction(double delta_t) {
   // Predict sigma points
   SigmaPointPrediction(Xsig_aug, delta_t, &Xsig_pred_);
   
+  // Predict state x_ and state covariance matrix P_
+  PredictMeanAndCovariance(&x_, &P_);
   
-  
+  /**
+   This is the unscented version of:
+   x_ = F_ * x_;
+   P_ = F_ * P_ * F_.transpose() + Q_;
+   */
 }
 
 /**
@@ -334,6 +340,65 @@ void UKF::SigmaPointPrediction(MatrixXd& Xsig_aug, double delta_t, MatrixXd* Xsi
   //write result
   *Xsig_out = Xsig_pred;
 
+}
+
+
+void UKF::PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out) {
+
+  //set state dimension
+  int n_x = 5;
+
+  //set augmented dimension
+  int n_aug = 7;
+
+  //define spreading parameter
+  double lambda = 3 - n_aug;
+
+  //create vector for weights
+  VectorXd weights = VectorXd(2*n_aug+1);
+  
+  //create vector for predicted state
+  VectorXd x = VectorXd(n_x);
+
+  //create covariance matrix for prediction
+  MatrixXd P = MatrixXd(n_x, n_x);
+
+  // set weights
+  double weight_0 = lambda/(lambda+n_aug);
+  weights(0) = weight_0;
+  for (int i=1; i<2*n_aug+1; i++) {  //2n+1 weights
+    double weight = 0.5/(n_aug+lambda);
+    weights(i) = weight;
+  }
+
+  //predicted state mean
+  x.fill(0.0);
+  for (int i = 0; i < 2 * n_aug + 1; i++) {  //iterate over sigma points
+    x = x + weights(i) * Xsig_pred_.col(i);
+  }
+
+  //predicted state covariance matrix
+  P.fill(0.0);
+  for (int i = 0; i < 2 * n_aug + 1; i++) {  //iterate over sigma points
+
+    // state difference
+    VectorXd x_diff = Xsig_pred_.col(i) - x;
+    //angle normalization
+    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
+    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+
+    P = P + weights(i) * x_diff * x_diff.transpose() ;
+  }
+
+  //print result
+  std::cout << "Predicted state" << std::endl;
+  std::cout << x << std::endl;
+  std::cout << "Predicted covariance matrix" << std::endl;
+  std::cout << P << std::endl;
+
+  //write result
+  *x_out = x;
+  *P_out = P;
 }
 
 
