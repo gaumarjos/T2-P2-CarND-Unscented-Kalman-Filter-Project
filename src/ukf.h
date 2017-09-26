@@ -68,8 +68,8 @@ public:
   double lambda_;
   
   ///* NIS values
-  std::vector<double> laser_nis_;
-  std::vector<double> radar_nis_;
+  //std::vector<double> laser_nis_;
+  //std::vector<double> radar_nis_;
   std::ofstream logfile_laser_;
   std::ofstream logfile_radar_;
 
@@ -124,7 +124,6 @@ public:
   void UpdateState(MatrixXd& Zsig, VectorXd& z_pred, MatrixXd& S, VectorXd& z, unsigned int n_z);
   double CalculateNIS(VectorXd& z_pred, MatrixXd& S, VectorXd& z);
   
-  double WrapAngle(double angle);
 };
 
 #endif /* UKF_H */
