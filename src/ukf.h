@@ -66,6 +66,12 @@ public:
 
   ///* Sigma point spreading parameter
   double lambda_;
+  
+  ///* NIS values
+  std::vector<double> laser_nis_;
+  std::vector<double> radar_nis_;
+  std::ofstream logfile_laser_;
+  std::ofstream logfile_radar_;
 
 
   /**
@@ -107,14 +113,16 @@ public:
   void SigmaPointPrediction(MatrixXd& Xsig_aug, double delta_t);
   void PredictMeanAndCovariance();//VectorXd* x_out, MatrixXd* P_out);
   
+  /*
   void PredictRadarMeasurement(MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd* S_out);
   void RadarUpdateState(MatrixXd& Zsig, VectorXd& z_pred, MatrixXd& S, VectorXd& z);
-  
   void PredictLidarMeasurement(MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd* S_out);
   void LidarUpdateState(MatrixXd& Zsig, VectorXd& z_pred, MatrixXd& S, VectorXd& z);
+  */
   
-  void PredictSensorMeasurement(MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd* S_out, unsigned int sensor);
+  void PredictSensorMeasurement(MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd* S_out, unsigned int n_z, unsigned int sensor, MatrixXd& R);
   void UpdateState(MatrixXd& Zsig, VectorXd& z_pred, MatrixXd& S, VectorXd& z, unsigned int n_z);
+  double CalculateNIS(VectorXd& z_pred, MatrixXd& S, VectorXd& z);
   
   double WrapAngle(double angle);
 };

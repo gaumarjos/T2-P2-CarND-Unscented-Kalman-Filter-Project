@@ -1,6 +1,7 @@
 #include "ukf.h"
 #include "Eigen/Dense"
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 using Eigen::MatrixXd;
@@ -24,10 +25,10 @@ UKF::UKF() {
   P_ = MatrixXd(5, 5);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 5; // it was 30
+  std_a_ = 1;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 5; // it was 30
+  std_yawdd_ = 2;
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 0.15;
@@ -63,6 +64,10 @@ UKF::UKF() {
   }
   
   Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
+  
+  // Log files
+  logfile_laser_.open("laser_nis.txt", std::ios_base::app);
+  logfile_radar_.open("radar_nis.txt", std::ios_base::app);
   
   // TEST AREA
   //cout << "Prova: " << WrapAngle((-20000000000*M_PI-0.1)) << endl;
@@ -166,7 +171,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   // print the output
   cout << "x_ = " << x_ << endl;
   cout << "P_ = " << P_ << endl;
-  // cout << meas_package.raw_measurements_ << endl;
     
 }
 
@@ -217,9 +221,17 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   MatrixXd Zsig;
   VectorXd z_pred;
   MatrixXd S;
+  unsigned int n_z = 2;
+  MatrixXd R = MatrixXd(n_z,n_z);
+  R << std_laspx_*std_laspx_, 0,
+       0,                     std_laspy_*std_laspy_;
+  PredictSensorMeasurement(&Zsig, &z_pred, &S, n_z, 1, R);
   // PredictLidarMeasurement(&Zsig, &z_pred, &S);
-  PredictSensorMeasurement(&Zsig, &z_pred, &S, 1);
   UpdateState(Zsig, z_pred, S, meas_package.raw_measurements_, 2);
+  
+  double nis = CalculateNIS(z_pred, S, meas_package.raw_measurements_);
+  laser_nis_.push_back(nis);
+  logfile_laser_ << nis << endl;
 }
 
 /**
@@ -239,9 +251,18 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   MatrixXd Zsig;
   VectorXd z_pred;
   MatrixXd S;
+  unsigned int n_z = 3;
+  MatrixXd R = MatrixXd(n_z,n_z);
+  R << std_radr_*std_radr_, 0,                       0,
+       0,                   std_radphi_*std_radphi_, 0,
+       0,                   0,                       std_radrd_*std_radrd_;  
+  PredictSensorMeasurement(&Zsig, &z_pred, &S, n_z, 0, R);
   // PredictRadarMeasurement(&Zsig, &z_pred, &S);
-  PredictSensorMeasurement(&Zsig, &z_pred, &S, 0);
   UpdateState(Zsig, z_pred, S, meas_package.raw_measurements_, 3);
+  
+  double nis = CalculateNIS(z_pred, S, meas_package.raw_measurements_);
+  radar_nis_.push_back(nis);
+  logfile_radar_ << nis << endl;
 }
 
 
@@ -385,6 +406,7 @@ void UKF::PredictMeanAndCovariance() {
 /*****************************************************************************
  * RADAR AND LIDAR UPDATE FUNCTIONS
  ****************************************************************************/
+/**
 void UKF::PredictRadarMeasurement(MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd* S_out) {
 
   //set measurement dimension, radar can measure r, phi, and r_dot
@@ -511,20 +533,9 @@ void UKF::PredictLidarMeasurement(MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd*
   *z_out = z_pred;
   *S_out = S;
 }
+*/
 
-
-void UKF::PredictSensorMeasurement(MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd* S_out, unsigned int sensor) {
-
-  //set measurement dimension
-  int n_z;
-  if (sensor == 0) {
-    //radar can measure r, phi, and r_dot
-    n_z = 3;
-  }
-  else {
-  //radar can measure x and py
-    n_z = 2;
-  }
+void UKF::PredictSensorMeasurement(MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd* S_out, unsigned int n_z, unsigned int sensor, MatrixXd& R) {
   
   //create matrix for sigma points in measurement space
   MatrixXd Zsig = MatrixXd(n_z, 2 * n_aug_ + 1);
@@ -574,22 +585,8 @@ void UKF::PredictSensorMeasurement(MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd
   }
 
   //add measurement noise covariance matrix
-  MatrixXd R = MatrixXd(n_z,n_z);
-  if (sensor == 0) {
-    R << std_radr_*std_radr_, 0,                       0,
-         0,                   std_radphi_*std_radphi_, 0,
-         0,                   0,                       std_radrd_*std_radrd_;
-  }
-  else {
-    R << std_laspx_*std_laspx_, 0,
-         0,                     std_laspy_*std_laspy_;
-  }
   S = S + R;
-
-  //print result
-  //std::cout << "z_pred: " << std::endl << z_pred << std::endl;
-  //std::cout << "S: " << std::endl << S << std::endl;
-
+  
   //write result
   *Zsig_out = Zsig;
   *z_out = z_pred;
@@ -634,10 +631,15 @@ void UKF::UpdateState(MatrixXd& Zsig, VectorXd& z_pred, MatrixXd& S, VectorXd& z
   //update state mean and covariance matrix
   x_ = x_ + K * z_diff;
   P_ = P_ - K*S*K.transpose();
-
+  
 }
 
 
+double UKF::CalculateNIS(VectorXd& z_pred, MatrixXd& S, VectorXd& z) {
+  VectorXd z_diff = z - z_pred;
+  return (z_diff.transpose() * S.inverse() * z_diff);
+
+}
 
 
 
