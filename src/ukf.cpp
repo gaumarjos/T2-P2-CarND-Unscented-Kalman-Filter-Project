@@ -240,10 +240,11 @@ void UKF::AugmentedSigmaPoints(MatrixXd* Xsig_out) {
 
   //create augmented sigma points
   Xsig_aug.col(0)  = x_aug;
+  double sqrt_val = sqrt(lambda_+n_aug_);
   for (int i = 0; i< n_aug_; i++)
   {
-    Xsig_aug.col(i+1)        = x_aug + sqrt(lambda_+n_aug_) * L.col(i);
-    Xsig_aug.col(i+1+n_aug_) = x_aug - sqrt(lambda_+n_aug_) * L.col(i);
+    Xsig_aug.col(i+1)        = x_aug + sqrt_val * L.col(i);
+    Xsig_aug.col(i+1+n_aug_) = x_aug - sqrt_val * L.col(i);
   }
 
   //write result
@@ -356,16 +357,17 @@ void UKF::PredictSensorMeasurement(MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd
     double yaw = Xsig_pred_(3,i);
 
     // measurement model
-    if (sensor == 0) {
+    if (sensor == 0) {                           // Radar
       double v1 = cos(yaw)*v;
       double v2 = sin(yaw)*v;
-      Zsig(0,i) = sqrt(p_x*p_x + p_y*p_y);                        //r
-      Zsig(1,i) = atan2(p_y,p_x);                                 //phi
-      Zsig(2,i) = (p_x*v1 + p_y*v2 ) / sqrt(p_x*p_x + p_y*p_y);   //r_dot
+      double rho = sqrt(p_x*p_x + p_y*p_y);
+      Zsig(0,i) = rho;                           //rho
+      Zsig(1,i) = atan2(p_y,p_x);                //phi
+      Zsig(2,i) = (p_x*v1 + p_y*v2) / rho;       //rho_dot
     }
-    else {
-      Zsig(0,i) = p_x;
-      Zsig(1,i) = p_y;
+    else {                                       // Laser
+      Zsig(0,i) = p_x;                           // px
+      Zsig(1,i) = p_y;                           // py
     }
   }
 
