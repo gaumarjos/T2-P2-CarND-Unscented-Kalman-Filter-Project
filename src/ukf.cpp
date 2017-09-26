@@ -67,8 +67,8 @@ UKF::UKF() {
   Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
   
   // Log files
-  logfile_laser_.open("laser_nis.txt", std::ios_base::app);
-  logfile_radar_.open("radar_nis.txt", std::ios_base::app);
+  logfile_laser_.open("../logs/laser_nis.txt", std::ios_base::app);
+  logfile_radar_.open("../logs/radar_nis.txt", std::ios_base::app);
     
 }
 
